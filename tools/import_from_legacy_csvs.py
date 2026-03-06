@@ -7,7 +7,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple
 
 
 def _iter_legacy_csv_rows(csv_path: Path):
@@ -73,7 +73,8 @@ def collect_combined_keys(combined_csv: Path) -> List[str]:
             key = row[key_idx].strip()
             if key and not key.startswith("//"):
                 keys.append(key)
-    return keys
+    # Убираем дубли, сохраняя порядок первого появления
+    return list(dict.fromkeys(keys))
 
 
 def build_report(legacy_map: Dict[str, str], conflicts: List[dict], missing_keys: List[str]) -> dict:
@@ -107,6 +108,8 @@ def main() -> int:
     missing_keys: List[str] = []
     if args.combined:
         combined_path = Path(args.combined)
+        if not combined_path.exists():
+            raise FileNotFoundError(f"combined.csv не найден: {combined_path}")
         combined_keys = collect_combined_keys(combined_path)
         missing_keys = [k for k in combined_keys if k not in legacy_map]
 
