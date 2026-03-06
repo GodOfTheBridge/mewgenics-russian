@@ -2,59 +2,83 @@
 
 Неофициальный русский перевод для [Mewgenics](https://store.steampowered.com/app/686060/Mewgenics/) (Edmund McMillen & Tyler Glaiel, 2026).
 
-Переведено 16 000+ строк: способности, предметы, диалоги, события, мутации, интерфейс — всё на русском. Кириллические шрифты встроены.
+## Важно про Build 22188119
 
-> Перевод выполнен с помощью Claude Opus 4.6 с исправлениями из Claude Haiku 4.5. Официальная локализация ожидается от разработчиков.
+После Build `22188119` игра читает локализацию из одного файла внутри `resources.gpak`:
 
-## 📥 Установка
+- `data/text/combined.csv`
+- язык берётся из колонки `ru`
 
-Скачайте [последний релиз](https://github.com/undergodst/mewgenics-russian/releases/latest) и выберите архив под свою платформу.
+Это значит, что старый подход с одними только `data/text/*.csv` больше **недостаточен**: теперь нужен патч `resources.gpak`.
 
-**Windows:** распакуйте архив и запустите `install_ru.exe`.
+## Быстрый старт
 
-**Steam Deck / Linux:** распакуйте архив, откройте терминал в папке и выполните:
+### Установка (патч resources.gpak)
 
 ```bash
-chmod +x install_steamdeck.sh && ./install_steamdeck.sh
+python install.py --game-dir "D:/SteamLibrary/steamapps/common/Mewgenics" --extractor "C:/Tools/GPAK-Extractor.exe"
 ```
 
-**Ручная установка:** скопируйте папки `data/` и `swfs/` в папку с игрой.
+### Проверка качества текущего combined.csv
 
-Python не требуется.
+```bash
+python install.py --check --game-dir "D:/SteamLibrary/steamapps/common/Mewgenics" --extractor "C:/Tools/GPAK-Extractor.exe"
+```
 
-## 🗑️ Удаление
+### Dry-run
 
-Запустите `uninstall_ru.exe` (Windows) или `./uninstall_steamdeck.sh` (Deck).
+```bash
+python install.py --dry-run --game-dir "D:/SteamLibrary/steamapps/common/Mewgenics" --extractor "C:/Tools/GPAK-Extractor.exe"
+```
 
-Альтернативно: проверьте целостность файлов через Steam.
+## Утилиты в `tools/`
 
-## 🔄 После обновления игры
+- `tools/import_from_legacy_csvs.py` — импортирует legacy-переводы из `data/text/*.csv`, строит merge-отчёт (`imported_count`, `duplicate_key_conflicts`, `missing_keys`).
+- `tools/build_ru_combined.py` — читает `combined.csv`, подставляет `ru` из legacy-переводов по `KEY`, сохраняет порядок строк и все колонки.
+- `tools/check_translation.py` — запускает проверки качества `ru` (пустые строки, несовпадение плейсхолдеров/разметки, подозрительные сокращения и т.д.), пишет JSON-отчёт.
+- `tools/patch_gpak.py` — автоматизирует распаковку/сборку `resources.gpak` через внешний `GPAK-Extractor`.
 
-Steam может перезаписать файлы. Просто запустите установщик повторно.
+## Примеры ручного запуска
 
-## ⚙️ Как это работает
+```bash
+python -m tools.import_from_legacy_csvs --legacy-dir data/text --combined combined.csv --report merge_report.json
+python -m tools.build_ru_combined --combined combined.csv --out combined_ru.csv --legacy-dir data/text
+python -m tools.check_translation --combined combined_ru.csv --report check_report.json --legacy-dir data/text
+python -m tools.patch_gpak --game-dir "D:/SteamLibrary/steamapps/common/Mewgenics" --extractor "C:/Tools/GPAK-Extractor.exe"
+```
 
-Установщик автоматически находит папку с игрой через реестр Steam и копирует папки `data/` и `swfs/` с переведёнными CSV-файлами и кириллическими шрифтами. Игра подхватывает файлы из этих папок приоритетнее встроенных ресурсов.
+## Восстановление оригинала
 
-## 🐛 Известные проблемы
+При патче сохраняется `resources.gpak.bak` (если ещё не создан).
 
-- Машинный перевод — некоторые фразы могут звучать неестественно
-- Небольшие артефакты на шрифтах (особенность Flash-рендеринга)
+Чтобы откатиться:
 
-Нашли баг? Пишите в [Issues](https://github.com/undergodst/mewgenics-russian/issues).
+1. Закройте игру.
+2. Удалите изменённый `resources.gpak`.
+3. Переименуйте `resources.gpak.bak` обратно в `resources.gpak`.
 
-## 🤝 Вклад
+## Критичное предупреждение по качеству перевода
 
-PR приветствуются! Редактируйте CSV-файлы в `data/text/`. Формат: `KEY,en` — колонка `en` содержит русский текст.
+Нельзя машинно сокращать переводы описаний способностей, предметов, ивентов и NPC-диалогов.
 
-## ⚠️ Безопасность
+Правила:
 
-Установщик запрашивает права администратора для записи в папку Steam. Если антивирус ругается — это ложное срабатывание (False Positive), типичное для PyInstaller. Исходный код доступен в этом репозитории.
+- не сокращать описания способностей и предметов;
+- не обрезать нарративы событий и диалоги NPC;
+- сохранять полный смысл и длину, если перевод уже есть;
+- сохранять плейсхолдеры, спецтеги и разметку;
+- если перевода нет — лучше оставить `ru` пустым и пометить это в отчёте;
+- любые машинно сгенерированные кандидаты должны отмечаться отдельно в отчётах как `machine_generated_candidates`.
 
-## 🙏 Благодарности
+## Что не коммитить
 
-- [Macbet](https://github.com/Macbet) — перевод на Claude Opus 4.6
+Не добавляйте в git игровые бинарники и артефакты распаковки:
 
-## 📄 Лицензия
+- `resources.gpak`
+- `resources.gpak.bak` из папки игры
+- `output.gpak`
+- временные папки распаковки
+
+## Лицензия
 
 MIT
