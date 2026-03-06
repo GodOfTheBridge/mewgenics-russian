@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from tools.import_from_legacy_csvs import build_legacy_dictionary
 
@@ -15,7 +15,7 @@ LANG_NAME_KEY = "CURRENT_LANGUAGE_NAME"
 LANG_SHIPPABLE_KEY = "CURRENT_LANGUAGE_SHIPPABLE"
 
 
-def fill_ru_rows(rows: List[List[str]], header: List[str], legacy_map: dict) -> Tuple[List[List[str]], dict]:
+def fill_ru_rows(rows: List[List[str]], header: List[str], legacy_map: Dict[str, str]) -> Tuple[List[List[str]], dict]:
     key_idx = header.index("KEY")
     ru_idx = header.index("ru")
 
@@ -79,7 +79,14 @@ def main() -> int:
     combined_path = Path(args.combined)
     out_path = Path(args.out)
 
-    legacy_map, _ = build_legacy_dictionary(Path(args.legacy_dir))
+    if not combined_path.exists():
+        raise FileNotFoundError(f"combined.csv не найден: {combined_path}")
+
+    legacy_dir = Path(args.legacy_dir)
+    if not legacy_dir.exists():
+        raise FileNotFoundError(f"Папка legacy CSV не найдена: {legacy_dir}")
+
+    legacy_map, _ = build_legacy_dictionary(legacy_dir)
 
     with combined_path.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.reader(f)
